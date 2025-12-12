@@ -31,3 +31,5 @@ go.work.sum
 # .idea/
 # .vscode/
 /.idea
+/sh/go-directory-syncer-wrapper-private.sh
+/hidden.md
