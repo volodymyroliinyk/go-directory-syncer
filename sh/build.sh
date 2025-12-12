@@ -23,7 +23,19 @@ fi
 # --- 2. BUILD AND COPY THE GO EXECUTE ---
 echo "--- 1. Building Go binary ($GO_SOURCE_FILE) ---"
 # Build the binary in the root directory
-(cd "$PROJECT_ROOT" && go build -o "$GO_BINARY_NAME" "$GO_SOURCE_FILE")
+(cd "$PROJECT_ROOT" && \
+    echo "Resolving dependencies (go mod tidy)..." && \
+    /usr/local/go/bin/go mod tidy && \
+    echo "Compiling Go binary..." && \
+    /usr/local/go/bin/go build -o "$GO_BINARY_NAME" "$GO_SOURCE_FILE")
+
+# --- 5a. ЗУПИНКА СЛУЖБИ (ПЕРЕД КОПІЮВАННЯМ) ---
+INSTANCE="projectA"
+SERVICE_TEMPLATE_NAME="$SYSTEMD_SERVICE_TARGET_NAME"
+SERVICE_INSTANCE="${SERVICE_TEMPLATE_NAME/.service/$INSTANCE.service}"
+echo "Attempting to stop active service instance: $SERVICE_INSTANCE"
+# Зупиняємо, ігноруємо помилки, якщо служба не запущена
+sudo systemctl stop "$SERVICE_INSTANCE" 2>/dev/null
 
 echo "--- 2. Copying binary to $BIN_PATH ---"
 sudo cp "$PROJECT_ROOT/$GO_BINARY_NAME" "$BIN_PATH/$GO_BINARY_NAME"
@@ -43,25 +55,16 @@ echo "Wrapper script installed to $WRAPPER_TARGET_PATH"
 echo "--- 4. Installing Systemd service template ($SYSTEMD_SERVICE_TEMPLATE_NAME) ---"
 SERVICE_SOURCE_PATH="$PROJECT_ROOT/service/$SYSTEMD_SERVICE_TEMPLATE_NAME"
 SERVICE_TARGET_PATH="$SYSTEMD_PATH/$SYSTEMD_SERVICE_TARGET_NAME"
-
 # Copy the service template with a new, shorter name
 sudo cp "$SERVICE_SOURCE_PATH" "$SERVICE_TARGET_PATH"
 echo "Systemd template installed to $SERVICE_TARGET_PATH"
 
-# --- 5. SERVICE ACTIVATION ---
-INSTANCE="projectA"
-# FIX: Use the correct service target name and compute the instance
-SERVICE_INSTANCE="$SYSTEMD_SERVICE_TARGET_NAME" # go-syncer@.service
-SERVICE_INSTANCE="${SERVICE_INSTANCE/.service/$INSTANCE.service}" # Result: go-syncer@projectA.service
 
 echo "--- 5. Reloading Systemd and starting $SERVICE_INSTANCE ---"
-
 # Reload configuration
 sudo systemctl daemon-reload
-
 # Starting the first instance
 sudo systemctl start "$SERVICE_INSTANCE"
-
 # Enable autorun
 sudo systemctl enable "$SERVICE_INSTANCE"
 

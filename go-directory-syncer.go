@@ -18,6 +18,7 @@ import (
 var (
     sourceDirectory      string
     destinationDirectory string
+    syncStrategy         string // Новий параметр
 )
 
 func init() {
@@ -26,10 +27,18 @@ func init() {
     // although in Go code it is `camelCase`.
     flag.StringVar(&sourceDirectory, "source-directory", "", "Source directory to watch and synchronize.")
     flag.StringVar(&destinationDirectory, "destination-directory", "", "Destination directory for synchronization.")
+    flag.StringVar(&syncStrategy, "strategy", "mirror", "Synchronization strategy: 'mirror' (Source is mirrored to Destination, files deleted) or 'merge' (Source is copied/merged into Destination, no files deleted).")
     flag.Parse()
 
     if sourceDirectory == "" || destinationDirectory == "" {
         fmt.Println("Error: Both --source-directory and --destination-directory must be specified.")
+        flag.Usage()
+        os.Exit(1)
+    }
+
+    // Перевірка коректності стратегії
+    if syncStrategy != "mirror" && syncStrategy != "merge" {
+        fmt.Println("Error: Invalid strategy specified. Use 'mirror' or 'merge'.")
         flag.Usage()
         os.Exit(1)
     }
@@ -137,13 +146,16 @@ func startWatcher(source, destination string) error {
         return fmt.Errorf("error walking the source directory: %w", err)
     }
 
-    log.Println("Adding directories to watcher (Destination)...")
-    // AN EXTRA STEP: Recursively track Destination
-    if err := addDirectoriesToWatcher(watcher, destination); err != nil {
-        log.Printf("Warning: Failed to fully watch destination directory %s: %v", destination, err)
-        // Not a fatal error, let's continue
+    if syncStrategy == "mirror" {
+        log.Println("Adding directories to watcher (Destination)...")
+        // AN EXTRA STEP: Recursively track Destination
+        if err := addDirectoriesToWatcher(watcher, destination); err != nil {
+            log.Printf("Warning: Failed to fully watch destination directory %s: %v", destination, err)
+            // Not a fatal error, let's continue
+        }
+    } else {
+        log.Println("Strategy: MERGE. Only watching Source directory.")
     }
-
     <-done // 2. Hang in processes constantly
     return nil
 }
@@ -238,49 +250,55 @@ func syncDirectory(source, destination string) error {
 
     // Additional step: Delete files/folders in destination that are not in source
     // This ensures IDENTITY (like rsync --delete or full cp/rsync)
-    log.Println("Checking destination for files to remove...")
-    err = filepath.Walk(destination, func(path string, info os.FileInfo, err error) error {
-        if err != nil {
-            return err
-        }
-
-        relPath, err := filepath.Rel(destination, path)
-        if err != nil {
-            return err
-        }
-        if relPath == "." {
-            return nil // Skip the root directory
-        }
-
-        sourcePath := filepath.Join(source, relPath)
-
-        // Check for existence in source
-        if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
-            wg.Add(1)
-            go func(p string) {
-                defer wg.Done()
-                log.Printf("Deleting from destination: %s", p)
-                // Delete recursively if it's a directory
-                if err := os.RemoveAll(p); err != nil {
-                    errCh <- fmt.Errorf("failed to delete %s: %w", p, err)
-                }
-            }(path)
-
-            if info.IsDir() {
-                return filepath.SkipDir // Skip traversal of the deleted directory
+    if syncStrategy == "mirror" { // Видалення тільки для стратегії mirror
+        log.Println("Checking destination for files to remove...")
+        err = filepath.Walk(destination, func(path string, info os.FileInfo, err error) error {
+            if err != nil {
+                return err
             }
+
+            relPath, err := filepath.Rel(destination, path)
+            if err != nil {
+                return err
+            }
+            if relPath == "." {
+                return nil // Skip the root directory
+            }
+
+            sourcePath := filepath.Join(source, relPath)
+
+            // Check for existence in source
+            if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+                wg.Add(1)
+                go func(p string) {
+                    defer wg.Done()
+                    log.Printf("Deleting from destination: %s", p)
+                    // Delete recursively if it's a directory
+                    if err := os.RemoveAll(p); err != nil {
+                        errCh <- fmt.Errorf("failed to delete %s: %w", p, err)
+                    }
+                }(path)
+
+                if info.IsDir() {
+                    return filepath.SkipDir // Skip traversal of the deleted directory
+                }
+            }
+            return nil
+        })
+
+        wg.Wait()
+
+        select {
+        case err := <-errCh:
+            return err
+        default:
+            return err // Return an error from Walk, if there was one
         }
-        return nil
-    })
-
-    wg.Wait()
-
-    select {
-    case err := <-errCh:
-        return err
-    default:
-        return err // Return an error from Walk, if there was one
+    } else {
+        log.Println("Strategy: MERGE. Skipping file deletion in Destination.")
     }
+
+    return nil // Якщо strategy == merge, повертаємо nil після копіювання
 }
 
 // 6. Function for copying a file with saving metadata

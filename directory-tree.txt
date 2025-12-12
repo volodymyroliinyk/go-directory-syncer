@@ -3,7 +3,6 @@ go-directory-syncer/
 │   └── go-directory-syncer@.service
 ├── sh/
 │   ├── build.sh
-│   ├── go-directory-syncer-wrapper-private.sh
 │   └── go-directory-syncer-wrapper.sh
 ├── test/
 │   ├── destination_directory/
@@ -21,5 +20,4 @@ go-directory-syncer/
 ├── go-directory-syncer.go
 ├── go.mod
 ├── go.sum
-├── hidden.md
 └── list.todo

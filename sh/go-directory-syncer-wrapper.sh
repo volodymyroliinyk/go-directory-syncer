@@ -7,10 +7,12 @@ case $INSTANCE_NAME in
     projectA)
         SOURCE="/home/$USER/data/source_A"
         DESTINATION="/mnt/backup/dest_A"
+        SYNC_STRATEGY="mirror"
         ;;
     projectB)
         SOURCE="/home/$USER/docs/source_B"
         DESTINATION="/mnt/cloud/dest_B"
+        SYNC_STRATEGY="merge"
         ;;
     # Add other sync pairs here
     *)
@@ -22,4 +24,5 @@ esac
 # Running your Go script with defined paths
 exec /usr/local/bin/go-directory-syncer \
     --source-directory="$SOURCE" \
-    --destination-directory="$DESTINATION"
+    --destination-directory="$DESTINATION" \
+    --strategy="$SYNC_STRATEGY"
