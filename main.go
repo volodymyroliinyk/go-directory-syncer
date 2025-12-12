@@ -102,7 +102,10 @@ func startWatcher(source, destination string) error {
 
                 // Start synchronization with debounce
                 if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
-                    log.Printf("Detected change: %s %s. Scheduling sync...", event.Op.String(), event.Name)
+                    // event.Name can be from source or destination.
+                    // Always run syncDirectory (Source -> Destination)
+
+                    log.Printf("Detected change in *any* monitored directory: %s %s. Scheduling sync...", event.Op.String(), event.Name)
 
                     if debounceTimer != nil {
                         debounceTimer.Stop()
@@ -110,6 +113,7 @@ func startWatcher(source, destination string) error {
 
                     // Delay synchronization for a short time
                     debounceTimer = time.AfterFunc(debounceDuration, func() {
+                        // use the Source and Destination passed in startWatcher
                         if err := syncDirectory(source, destination); err != nil {
                             log.Printf("Synchronization failed: %v", err)
                         } else {
@@ -127,13 +131,33 @@ func startWatcher(source, destination string) error {
         }
     }()
 
-    // Add all existing directories to tracking
-    log.Println("Adding directories to watcher...")
-    err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+    // --- 3. ADDING DIRECTORIES TO TRACKING ---
+    log.Println("Adding directories to watcher (Source)...")
+    if err := addDirectoriesToWatcher(watcher, source); err != nil {
+        return fmt.Errorf("error walking the source directory: %w", err)
+    }
+
+    log.Println("Adding directories to watcher (Destination)...")
+    // AN EXTRA STEP: Recursively track Destination
+    if err := addDirectoriesToWatcher(watcher, destination); err != nil {
+        log.Printf("Warning: Failed to fully watch destination directory %s: %v", destination, err)
+        // Not a fatal error, let's continue
+    }
+
+    <-done // 2. Hang in processes constantly
+    return nil
+}
+
+// New helper function for recursively adding directories
+func addDirectoriesToWatcher(watcher *fsnotify.Watcher, root string) error {
+    return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
         if err != nil {
-            // Ignore access errors, but log them
             log.Printf("Warning: access error for path %s: %v", path, err)
-            return filepath.SkipDir // Skip this directory
+            // Skip this directory, but don't stop Walk
+            if info != nil && info.IsDir() {
+                return filepath.SkipDir
+            }
+            return nil
         }
         if info.IsDir() {
             if err := watcher.Add(path); err != nil {
@@ -142,12 +166,6 @@ func startWatcher(source, destination string) error {
         }
         return nil
     })
-    if err != nil {
-        return fmt.Errorf("error walking the source directory: %w", err)
-    }
-
-    <-done // 2. Hang in processes constantly
-    return nil
 }
 
 // 7. The speed of the script is as fast as possible
