@@ -1,5 +1,6 @@
 package main
 
+// TODO:[1]: https://gemini.google.com/app/023edbcc85a65189, sudo nano /etc/systemd/system/go-directory-syncer.service
 import (
     "flag"
     "fmt"

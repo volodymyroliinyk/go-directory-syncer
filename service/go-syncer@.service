@@ -1,0 +1,25 @@
+[Unit]
+Description=Go Directory Syncer Service for pair %i
+After=network.target
+
+[Service]
+# Specify the user under which the synchronizer should runUser=$USER
+
+# Use %i (instance name) variable to define paths
+# NOTE: You will need to create a wrapper script (see Step 2),
+# because Systemd cannot directly split %i into two parameters (source and destination).
+ExecStart=/usr/local/bin/go-directory-syncer-wrapper.sh %i
+
+# Service type
+Type=simple
+
+# Reliability: always restart on failure
+Restart=always
+RestartSec=5s
+
+# Forward logs to journalctl
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
