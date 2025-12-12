@@ -1,0 +1,25 @@
+go-directory-syncer/
+├── service/
+│   └── go-directory-syncer@.service
+├── sh/
+│   ├── build.sh
+│   ├── go-directory-syncer-wrapper-private.sh
+│   └── go-directory-syncer-wrapper.sh
+├── test/
+│   ├── destination_directory/
+│   │   ├── texts1/
+│   │   │   └── text2.txt
+│   │   └── text1.txt
+│   ├── source_directory/
+│       ├── texts1/
+│       │   └── text2.txt
+│       └── text1.txt
+├── LICENSE
+├── README.md
+├── directory-tree.txt
+├── go-directory-syncer
+├── go-directory-syncer.go
+├── go.mod
+├── go.sum
+├── hidden.md
+└── list.todo
