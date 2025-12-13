@@ -51,6 +51,22 @@ func main() {
     sourceDirectory = filepath.Clean(sourceDirectory)
     destinationDirectory = filepath.Clean(destinationDirectory)
 
+    sourceDirectoryExists, err := directoryExists(sourceDirectory)
+    if err != nil {
+        log.Fatalf("Error checking directory: %v", err)
+    }
+    if !sourceDirectoryExists {
+        log.Fatalf("FATAL: Source directory \"%s\" does not exist or is a file. The application cannot start.", sourceDirectory)
+    }
+
+    destinationDirectoryExists, err := directoryExists(destinationDirectory)
+    if err != nil {
+        log.Fatalf("Error checking directory: %v", err)
+    }
+    if !destinationDirectoryExists {
+        log.Fatalf("FATAL: Destination directory \"%s\" does not exist or is a file. The application cannot start.", destinationDirectory)
+    }
+
     log.Printf("Starting Syncer: Source=%s, Destination=%s", sourceDirectory, destinationDirectory)
 
     // Set the maximum number of CPUs for Goroutines
@@ -357,4 +373,26 @@ func setDirMetadata(path string, info os.FileInfo) {
     if err := os.Chtimes(path, time.Now(), info.ModTime()); err != nil {
         log.Printf("Warning: Failed to chtimes directory %s: %v", path, err)
     }
+}
+
+func directoryExists(path string) (bool, error) {
+    info, err := os.Stat(path)
+
+    if os.IsNotExist(err) {
+        // Шлях не існує (найчистіший випадок)
+        return false, nil
+    }
+    if err != nil {
+        // Інші помилки, наприклад, помилка дозволу
+        return false, err
+    }
+
+    // Перевірка, чи це каталог
+    if !info.IsDir() {
+        // Існує, але це файл, а не каталог
+        return false, nil
+    }
+
+    // Каталог існує
+    return true, nil
 }
