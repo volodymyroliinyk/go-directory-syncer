@@ -16,7 +16,7 @@ import (
 
 // Variable/constant/package names follow Go Naming Conventions (camelCase).
 var (
-    syncStrategy string
+    syncStrategy         string
     sourceDirectory      string
     destinationDirectory string
 )
