@@ -33,3 +33,4 @@ go.work.sum
 /.idea
 /sh/go-directory-syncer-wrapper-private.sh
 /hidden.md
+/sh/build-private.sh

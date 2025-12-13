@@ -20,4 +20,5 @@ go-directory-syncer/
 ├── go-directory-syncer.go
 ├── go.mod
 ├── go.sum
+├── go_directory_syncer_test.go
 └── list.todo

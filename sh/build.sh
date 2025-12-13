@@ -14,6 +14,12 @@ SYSTEMD_SERVICE_TARGET_NAME="go-directory-syncer@.service"
 BIN_PATH="/usr/local/bin"
 SYSTEMD_PATH="/etc/systemd/system"
 
+# === CHANGE ONLY HERE WHEN ADDING A NEW PROJECT ===
+# All instances that need to be started and managed
+#PROJECTS_TO_MANAGE=("projectA" "projectB" "projectC")
+PROJECTS_TO_MANAGE=("projectA")
+# =======================================================
+
 # Check for root rights for sudo
 if [ "$(id -u)" -ne 0 ]; then
     echo "This script requires root privileges to install files to /usr/local/bin and /etc/systemd/system."
@@ -30,12 +36,14 @@ echo "--- 1. Building Go binary ($GO_SOURCE_FILE) ---"
     /usr/local/go/bin/go build -o "$GO_BINARY_NAME" "$GO_SOURCE_FILE")
 
 # --- 5a. STOP SERVICE (BEFORE COPYING) ---
-INSTANCE="projectA"
-SERVICE_TEMPLATE_NAME="$SYSTEMD_SERVICE_TARGET_NAME"
-SERVICE_INSTANCE="${SERVICE_TEMPLATE_NAME/.service/$INSTANCE.service}"
-echo "Attempting to stop active service instance: $SERVICE_INSTANCE"
-# Stop, ignore errors if the service is not running
-sudo systemctl stop "$SERVICE_INSTANCE" 2>/dev/null
+for INSTANCE_NAME in "${PROJECTS_TO_MANAGE[@]}"; do
+#  INSTANCE="projectA"
+  SERVICE_TEMPLATE_NAME="$SYSTEMD_SERVICE_TARGET_NAME"
+  SERVICE_INSTANCE="${SERVICE_TEMPLATE_NAME/.service/$INSTANCE_NAME.service}"
+  echo "Attempting to stop active service instance: $SERVICE_INSTANCE"
+  # Stop, ignore errors if the service is not running
+  sudo systemctl stop "$SERVICE_INSTANCE" 2>/dev/null
+done
 
 echo "--- 2. Copying binary to $BIN_PATH ---"
 sudo cp "$PROJECT_ROOT/$GO_BINARY_NAME" "$BIN_PATH/$GO_BINARY_NAME"
@@ -60,15 +68,18 @@ sudo cp "$SERVICE_SOURCE_PATH" "$SERVICE_TARGET_PATH"
 echo "Systemd template installed to $SERVICE_TARGET_PATH"
 
 
-echo "--- 5. Reloading Systemd and starting $SERVICE_INSTANCE ---"
-# Reload configuration
-sudo systemctl daemon-reload
-# Starting the first instance
-sudo systemctl start "$SERVICE_INSTANCE"
-# Enable autorun
-sudo systemctl enable "$SERVICE_INSTANCE"
+for INSTANCE_NAME in "${PROJECTS_TO_MANAGE[@]}"; do
+  SERVICE_INSTANCE="${SERVICE_TEMPLATE_NAME/.service/$INSTANCE_NAME.service}"
+  echo "--- 5. Reloading Systemd and starting $SERVICE_INSTANCE ---"
+  # Reload configuration
+  sudo systemctl daemon-reload
+  # Starting the first instance
+  sudo systemctl start "$SERVICE_INSTANCE"
+  # Enable autorun
+  sudo systemctl enable "$SERVICE_INSTANCE"
 
-echo "--- Installation Complete ---"
-echo "To manage, use the instance name, e.g.: go-directory-syncer@$INSTANCE"
-echo "Status check: sudo systemctl status $SERVICE_INSTANCE"
-echo "Logs: sudo journalctl -u $SERVICE_INSTANCE -f"
+  echo "--- Installation Complete ---"
+  echo "To manage, use the instance name, e.g.: go-directory-syncer@$INSTANCE"
+  echo "Status check: sudo systemctl status $SERVICE_INSTANCE"
+  echo "Logs: sudo journalctl -u $SERVICE_INSTANCE -f"
+done
