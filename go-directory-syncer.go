@@ -16,18 +16,22 @@ import (
 
 // Variable/constant/package names follow Go Naming Conventions (camelCase).
 var (
+    syncStrategy string
     sourceDirectory      string
     destinationDirectory string
-    syncStrategy         string // Новий параметр
 )
 
 func init() {
     // 1. Input parameters --source-directory, --destination-directory
     // Use hyphens in flag names for CLI Best Practices,
     // although in Go code it is `camelCase`.
+    flag.StringVar(&syncStrategy, "strategy", "mirror", "Synchronization strategy: 'mirror' (Source is mirrored to Destination, files deleted) or 'merge' (Source is copied/merged into Destination, no files deleted).")
     flag.StringVar(&sourceDirectory, "source-directory", "", "Source directory to watch and synchronize.")
     flag.StringVar(&destinationDirectory, "destination-directory", "", "Destination directory for synchronization.")
-    flag.StringVar(&syncStrategy, "strategy", "mirror", "Synchronization strategy: 'mirror' (Source is mirrored to Destination, files deleted) or 'merge' (Source is copied/merged into Destination, no files deleted).")
+
+}
+
+func main() {
     flag.Parse()
 
     if sourceDirectory == "" || destinationDirectory == "" {
@@ -36,7 +40,7 @@ func init() {
         os.Exit(1)
     }
 
-    // Перевірка коректності стратегії
+    // Checking the correctness of the strategy
     if syncStrategy != "mirror" && syncStrategy != "merge" {
         fmt.Println("Error: Invalid strategy specified. Use 'mirror' or 'merge'.")
         flag.Usage()
@@ -46,9 +50,7 @@ func init() {
     // Cleaning up paths
     sourceDirectory = filepath.Clean(sourceDirectory)
     destinationDirectory = filepath.Clean(destinationDirectory)
-}
 
-func main() {
     log.Printf("Starting Syncer: Source=%s, Destination=%s", sourceDirectory, destinationDirectory)
 
     // Set the maximum number of CPUs for Goroutines
@@ -250,7 +252,7 @@ func syncDirectory(source, destination string) error {
 
     // Additional step: Delete files/folders in destination that are not in source
     // This ensures IDENTITY (like rsync --delete or full cp/rsync)
-    if syncStrategy == "mirror" { // Видалення тільки для стратегії mirror
+    if syncStrategy == "mirror" { // Delete only for the mirror strategy
         log.Println("Checking destination for files to remove...")
         err = filepath.Walk(destination, func(path string, info os.FileInfo, err error) error {
             if err != nil {
@@ -298,7 +300,7 @@ func syncDirectory(source, destination string) error {
         log.Println("Strategy: MERGE. Skipping file deletion in Destination.")
     }
 
-    return nil // Якщо strategy == merge, повертаємо nil після копіювання
+    return nil // If strategy == merge, return nil after copying
 }
 
 // 6. Function for copying a file with saving metadata

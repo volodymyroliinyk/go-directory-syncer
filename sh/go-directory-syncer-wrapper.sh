@@ -5,14 +5,14 @@ INSTANCE_NAME=$1
 # The simplest option: using the case operator to specify paths by instance name
 case $INSTANCE_NAME in
     projectA)
+        SYNC_STRATEGY="mirror"
         SOURCE="/home/$USER/data/source_A"
         DESTINATION="/mnt/backup/dest_A"
-        SYNC_STRATEGY="mirror"
         ;;
     projectB)
+        SYNC_STRATEGY="merge"
         SOURCE="/home/$USER/docs/source_B"
         DESTINATION="/mnt/cloud/dest_B"
-        SYNC_STRATEGY="merge"
         ;;
     # Add other sync pairs here
     *)
@@ -23,6 +23,6 @@ esac
 
 # Running your Go script with defined paths
 exec /usr/local/bin/go-directory-syncer \
+    --strategy="$SYNC_STRATEGY" \
     --source-directory="$SOURCE" \
-    --destination-directory="$DESTINATION" \
-    --strategy="$SYNC_STRATEGY"
+    --destination-directory="$DESTINATION"

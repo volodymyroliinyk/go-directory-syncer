@@ -6,8 +6,8 @@ PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
 GO_BINARY_NAME="go-directory-syncer"
 GO_SOURCE_FILE="$GO_BINARY_NAME.go"
 
-WRAPPER_SCRIPT_SOURCE_NAME="go-directory-syncer-wrapper-private.sh" # We use the private version
-WRAPPER_SCRIPT_TARGET_NAME="go-directory-syncer-wrapper.sh" # We use the private version
+WRAPPER_SCRIPT_SOURCE_NAME="go-directory-syncer-wrapper-private.sh" # use the private version
+WRAPPER_SCRIPT_TARGET_NAME="go-directory-syncer-wrapper.sh" # use the private version
 SYSTEMD_SERVICE_TARGET_NAME="go-directory-syncer@.service"
 
 # Installation paths
@@ -29,12 +29,12 @@ echo "--- 1. Building Go binary ($GO_SOURCE_FILE) ---"
     echo "Compiling Go binary..." && \
     /usr/local/go/bin/go build -o "$GO_BINARY_NAME" "$GO_SOURCE_FILE")
 
-# --- 5a. ЗУПИНКА СЛУЖБИ (ПЕРЕД КОПІЮВАННЯМ) ---
+# --- 5a. STOP SERVICE (BEFORE COPYING) ---
 INSTANCE="projectA"
 SERVICE_TEMPLATE_NAME="$SYSTEMD_SERVICE_TARGET_NAME"
 SERVICE_INSTANCE="${SERVICE_TEMPLATE_NAME/.service/$INSTANCE.service}"
 echo "Attempting to stop active service instance: $SERVICE_INSTANCE"
-# Зупиняємо, ігноруємо помилки, якщо служба не запущена
+# Stop, ignore errors if the service is not running
 sudo systemctl stop "$SERVICE_INSTANCE" 2>/dev/null
 
 echo "--- 2. Copying binary to $BIN_PATH ---"
@@ -69,6 +69,6 @@ sudo systemctl start "$SERVICE_INSTANCE"
 sudo systemctl enable "$SERVICE_INSTANCE"
 
 echo "--- Installation Complete ---"
-echo "To manage, use the instance name, e.g.: go-syncer@$INSTANCE"
+echo "To manage, use the instance name, e.g.: go-directory-syncer@$INSTANCE"
 echo "Status check: sudo systemctl status $SERVICE_INSTANCE"
 echo "Logs: sudo journalctl -u $SERVICE_INSTANCE -f"
