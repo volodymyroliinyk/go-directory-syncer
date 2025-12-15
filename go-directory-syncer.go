@@ -72,8 +72,16 @@ func main() {
     // Set the maximum number of CPUs for Goroutines
     // 8. The script can use go multithreading,
     // 9. The script should optimally use the hardware resource
-    runtime.GOMAXPROCS(runtime.NumCPU())
-    log.Printf("Using up to %d CPU cores for concurrency.", runtime.NumCPU())
+    numCPU := runtime.NumCPU()
+    if numCPU <= 4 {
+        numCPU = 1
+    } else if numCPU > 5 && numCPU <= 8 {
+        numCPU = 2
+    } else if numCPU > 8 && numCPU <= 16 {
+        numCPU = 3
+    }
+    runtime.GOMAXPROCS(numCPU)
+    log.Printf("Using up to %d CPU cores for concurrency.", numCPU)
 
     // First sync (full)
     log.Println("Performing initial full synchronization...")
