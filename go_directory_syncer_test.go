@@ -179,3 +179,123 @@ func TestSyncStrategyMerge(t *testing.T) {
         }
     })
 }
+
+// --- TEST 3: FILE METADATA PRESERVATION ---
+func TestMetadataPreservation(t *testing.T) {
+    syncStrategy = "merge" // Strategy doesn't matter here
+
+    td := setupTestDirs(t)
+    defer td.Cleanup()
+
+    // 1. Create a source file with specific metadata
+    sourcePath := filepath.Join(td.Source, "metadata_test.txt")
+    createFile(t, sourcePath, "metadata content")
+
+    // Change modification time and permissions
+    modTime := time.Now().Add(-1 * time.Hour) // 1 hour ago
+    if err := os.Chtimes(sourcePath, modTime, modTime); err != nil {
+        t.Fatalf("Failed to set mod time: %v", err)
+    }
+    if err := os.Chmod(sourcePath, 0755); err != nil {
+        t.Fatalf("Failed to set permissions: %v", err)
+    }
+
+    // 2. Sync
+    if err := syncDirectory(td.Source, td.Destination); err != nil {
+        t.Fatalf("syncDirectory failed: %v", err)
+    }
+
+    // 3. Verify metadata on the destination file
+    destPath := filepath.Join(td.Destination, "metadata_test.txt")
+    destInfo, err := os.Stat(destPath)
+    if err != nil {
+        t.Fatalf("Failed to stat destination file: %v", err)
+    }
+
+    // Check modification time (allow for small discrepancies)
+    if !destInfo.ModTime().Truncate(time.Second).Equal(modTime.Truncate(time.Second)) {
+        t.Errorf("Modification time mismatch. Got: %v, Want: %v", destInfo.ModTime(), modTime)
+    }
+
+    // Check permissions
+    if destInfo.Mode().Perm() != 0755 {
+        t.Errorf("Permission mismatch. Got: %v, Want: %v", destInfo.Mode().Perm(), 0755)
+    }
+}
+
+// --- TEST 4: INPUT VALIDATION ---
+func TestInputValidation(t *testing.T) {
+    // Store original values
+    origSource := sourceDirectory
+    origDest := destinationDirectory
+    origStrategy := syncStrategy
+    // Restore original values after test
+    defer func() {
+        sourceDirectory = origSource
+        destinationDirectory = origDest
+        syncStrategy = origStrategy
+    }()
+
+    testCases := []struct {
+        name          string
+        source        string
+        destination   string
+        strategy      string
+        expectError   bool
+        expectedError string
+    }{
+        {
+            name:          "FAIL: Empty Source Directory",
+            source:        "",
+            destination:   "dest",
+            strategy:      "mirror",
+            expectError:   true,
+            expectedError: "both --source-directory and --destination-directory must be specified",
+        },
+        {
+            name:          "FAIL: Empty Destination Directory",
+            source:        "source",
+            destination:   "",
+            strategy:      "mirror",
+            expectError:   true,
+            expectedError: "both --source-directory and --destination-directory must be specified",
+        },
+        {
+            name:          "FAIL: Invalid Strategy",
+            source:        "source",
+            destination:   "dest",
+            strategy:      "invalid-strategy",
+            expectError:   true,
+            expectedError: "invalid strategy specified. Use 'mirror' or 'merge'",
+        },
+        {
+            name:          "SUCCESS: Valid Inputs",
+            source:        "source",
+            destination:   "dest",
+            strategy:      "merge",
+            expectError:   false,
+            expectedError: "",
+        },
+    }
+
+    for _, tc := range testCases {
+        t.Run(tc.name, func(t *testing.T) {
+            // Set the global flags for each test case
+            sourceDirectory = tc.source
+            destinationDirectory = tc.destination
+            syncStrategy = tc.strategy
+
+            err := validateInputs()
+
+            if tc.expectError {
+                if err == nil {
+                    t.Errorf("Expected an error, but got none.")
+                } else if err.Error() != tc.expectedError {
+                    t.Errorf("Expected error message '%s', but got '%s'", tc.expectedError, err.Error())
+                }
+            } else if err != nil {
+                t.Errorf("Did not expect an error, but got: %v", err)
+            }
+        })
+    }
+}

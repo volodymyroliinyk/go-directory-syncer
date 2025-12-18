@@ -31,18 +31,23 @@ func init() {
 
 }
 
-func main() {
-    flag.Parse()
-
+func validateInputs() error {
     if sourceDirectory == "" || destinationDirectory == "" {
-        fmt.Println("Error: Both --source-directory and --destination-directory must be specified.")
-        flag.Usage()
-        os.Exit(1)
+        return fmt.Errorf("both --source-directory and --destination-directory must be specified")
     }
-
     // Checking the correctness of the strategy
     if syncStrategy != "mirror" && syncStrategy != "merge" {
-        fmt.Println("Error: Invalid strategy specified. Use 'mirror' or 'merge'.")
+        return fmt.Errorf("invalid strategy specified. Use 'mirror' or 'merge'")
+    }
+    return nil
+}
+
+func main() {
+    runtime.GOMAXPROCS(1)
+    flag.Parse()
+
+    if err := validateInputs(); err != nil {
+        fmt.Printf("Error: %v\n", err)
         flag.Usage()
         os.Exit(1)
     }
@@ -68,20 +73,6 @@ func main() {
     }
 
     log.Printf("Starting Syncer: Source=%s, Destination=%s", sourceDirectory, destinationDirectory)
-
-    // Set the maximum number of CPUs for Goroutines
-    // 8. The script can use go multithreading,
-    // 9. The script should optimally use the hardware resource
-    numCPU := runtime.NumCPU()
-    if numCPU <= 4 {
-        numCPU = 1
-    } else if numCPU > 5 && numCPU <= 8 {
-        numCPU = 2
-    } else if numCPU > 8 && numCPU <= 16 {
-        numCPU = 3
-    }
-    runtime.GOMAXPROCS(numCPU)
-    log.Printf("Using up to %d CPU cores for concurrency.", numCPU)
 
     // First sync (full)
     log.Println("Performing initial full synchronization...")
@@ -150,7 +141,8 @@ func startWatcher(source, destination string) error {
                     debounceTimer = time.AfterFunc(debounceDuration, func() {
                         // use the Source and Destination passed in startWatcher
                         if err := syncDirectory(source, destination); err != nil {
-                            log.Printf("Synchronization failed: %v", err)
+                            // FATAL: If sync fails (e.g., disk disconnected), stop the whole application.
+                            log.Fatalf("Synchronization failed, stopping application: %v", err)
                         } else {
                             log.Println("Synchronization complete.")
                         }
