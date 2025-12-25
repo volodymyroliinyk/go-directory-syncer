@@ -110,9 +110,11 @@ sudo systemctl daemon-reload;
 
 # 2. Start a service instance (eg for projectA)
 sudo systemctl start go-directory-syncer@projectA.service;
+sudo systemctl start go-directory-syncer@projectB.service; 
 
 # 3. Enable automatic startup at system boot
 sudo systemctl enable go-directory-syncer@projectA.service;
+sudo systemctl enable go-directory-syncer@projectB.service;
 ```
 
 ## Monitoring and logging
@@ -122,9 +124,11 @@ Use `journalctl` to view service logs in real time:
 ```bash
 # Check service status
 sudo systemctl status go-directory-syncer@projectA.service;
+sudo systemctl status go-directory-syncer@projectB.service;
 
 # View logs for a specific instance
 sudo journalctl -u go-directory-syncer@projectA.service -f;
+sudo journalctl -u go-directory-syncer@projectB.service -f;
 ```
 
 -----
