@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#
+# Build and run all services.
+#
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
 
@@ -17,7 +19,7 @@ SYSTEMD_PATH="/etc/systemd/system"
 # === CHANGE ONLY HERE WHEN ADDING A NEW PROJECT ===
 # All instances that need to be started and managed
 #PROJECTS_TO_MANAGE=("projectA" "projectB" "projectC")
-PROJECTS_TO_MANAGE=("projectA")
+PROJECTS_TO_MANAGE=("projectA" "projectB")
 # =======================================================
 
 # Check for root rights for sudo
